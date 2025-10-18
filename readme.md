@@ -56,10 +56,10 @@ echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_movies"
                              │
                      ┌───────┴──────────┐
                      ▼                  ▼
-              ┌─────────────────┐  ┌───────────────┐
-              │ Protocol Layer  │  │ Business Logic│
-              │(mcpserver_core.sh)│  │(tool_* funcs)│
-              └─────────────────┘  └───────────────┘
+            ┌───────────────────┐  ┌───────────────┐
+            │ Protocol Layer    │  │ Business Logic│
+            │(mcpserver_core.sh)│  │(tool_* funcs) │
+            └───────────────────┘  └───────────────┘
                      │                  │
                      ▼                  ▼
               ┌─────────────────┐  ┌───────────────┐
