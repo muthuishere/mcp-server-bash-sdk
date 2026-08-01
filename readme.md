@@ -1,4 +1,5 @@
 # 🐚 MCP Server in Bash
+[![Discord](https://img.shields.io/badge/AgentNexus-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/V9C2kvHC8D)
 
 A lightweight, zero-overhead implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server in pure Bash. 
 
@@ -229,3 +230,8 @@ For AI assistants and local tool execution, these aren't blocking issues.
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 Blog : https://medium.com/@muthuishere/why-i-built-an-mcp-server-sdk-in-shell-yes-bash-6f2192072279
+
+## Community
+
+Questions, ideas, or built something with this? Join **[AgentNexus](https://discord.gg/V9C2kvHC8D)** — a Discord
+for people building with AI agents and open tools. This project lives in **#mcp-bash-sdk**.
