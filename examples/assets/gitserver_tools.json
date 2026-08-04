@@ -1,0 +1,50 @@
+{
+  "tools": [
+    {
+      "name": "git_status",
+      "description": "Current branch and uncommitted changes in the working tree.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "git_log",
+      "description": "Recent commits, most recent first. Optionally filter by author or by a path within the repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "How many commits to return (1-100).",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10
+          },
+          "author": {
+            "type": "string",
+            "description": "Only commits by authors matching this substring."
+          },
+          "path": {
+            "type": "string",
+            "description": "Only commits touching this file or directory."
+          }
+        }
+      }
+    },
+    {
+      "name": "git_show",
+      "description": "Metadata, message and changed-file statistics for a single commit.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "A commit-ish: a SHA, a branch name, or HEAD."
+          }
+        },
+        "required": ["ref"]
+      }
+    }
+  ]
+}

@@ -1,26 +1,44 @@
 # 🐚 MCP Server in Bash
 [![Discord](https://img.shields.io/badge/AgentNexus-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/V9C2kvHC8D)
 
-A lightweight, zero-overhead implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server in pure Bash. 
+A lightweight, zero-overhead implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server in pure Bash — targeting the current **2026-07-28** revision.
 
 **Why?** Most MCP servers are just API wrappers with schema conversion. This implementation provides a zero-overhead alternative to Node.js, Python, or other heavy runtimes.
+
+**Why now?** The 2026-07-28 revision made MCP *stateless*: no `initialize` handshake, no sessions, no server-initiated requests. One line in, one line out — which is exactly the shape of a shell read loop. Bash went from an awkward fit to a natural one.
 
 ---
 
 ## 📋 Features
 
-* ✅ Full JSON-RPC 2.0 protocol over stdio
-* ✅ Complete MCP protocol implementation
+* ✅ MCP **2026-07-28** — stateless, per-request version negotiation
+* ✅ **Both standard transports**: stdio and Streamable HTTP, from the same server file
+* ✅ `server/discover`, `tools/list`, `tools/call`
 * ✅ Dynamic tool discovery via function naming convention
 * ✅ External configuration via JSON files
-* ✅ Easy to extend with custom tools
+* ✅ Output validated against the official published JSON Schema
 
 ---
 
 ## 🔧 Requirements
 
-- Bash shell
-- `jq` for JSON processing (`brew install jq` on macOS)
+- Bash 3.2 or newer (3.2 is what macOS ships as `/bin/bash`)
+- `jq` for JSON processing (`brew install jq` / `apt install jq` / `apk add jq`)
+- *(HTTP transport only)* `socat` preferred, or `netcat` — see the note under [Transports](#-transports)
+- *(optional)* Python with `jsonschema`, only to run the schema conformance test
+
+### Supported platforms
+
+Verified by running the real test suites on each, not by inspection —
+`./scripts/test-linux.sh all` reproduces the Linux rows on any machine with Docker.
+
+| Platform | Shell | Unit | HTTP |
+| --- | --- | --- | --- |
+| macOS | bash 3.2 (`/bin/bash`) and 5.x | 31/31 | 19/19 |
+| Debian / Ubuntu | bash 5.2 | 31/31 | 19/19 |
+| Alpine (musl + busybox) | bash 5.3 | 31/31 | 19/19 |
+
+Docker is needed only to verify *other* platforms — never to run a server.
 
 ---
 
@@ -39,10 +57,28 @@ cd mcp-server-bash-sdk
 chmod +x mcpserver_core.sh moviemcpserver.sh
 ```
 
-3. **Try it out**
+3. **Try it out** — every request carries its protocol version in `params._meta`:
 
 ```bash
-echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_movies"}, "id": 1}' | ./moviemcpserver.sh
+echo '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | ./moviemcpserver.sh
+
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_movies","arguments":{},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}' | ./moviemcpserver.sh
+```
+
+4. **Or run it as a local HTTP endpoint**
+
+```bash
+./moviemcpserver.sh --http        # http://127.0.0.1:3000/mcp
+```
+
+5. **Run the tests**
+
+```bash
+./test_mcpserver_core.sh                          # 31 unit tests
+./test_mcpserver_core.sh test_discover_shape      # a single test
+./test_conformance.sh                             # validate against the official schema
+./test_http_transport.sh                          # 19 HTTP transport tests
+./scripts/test-linux.sh all                       # run everything on Debian, Alpine and Ubuntu
 ```
 
 ---
@@ -50,28 +86,39 @@ echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_movies"
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐         ┌────────────────────────┐
-│ MCP Host    │         │ MCP Server             │
-│ (AI System) │◄──────► │ (moviemcpserver.sh)    │
-└─────────────┘ stdio   └────────────────────────┘
-                             │
-                     ┌───────┴──────────┐
-                     ▼                  ▼
-            ┌───────────────────┐  ┌───────────────┐
-            │ Protocol Layer    │  │ Business Logic│
-            │(mcpserver_core.sh)│  │(tool_* funcs) │
-            └───────────────────┘  └───────────────┘
-                     │                  │
-                     ▼                  ▼
-              ┌─────────────────┐  ┌───────────────┐
-              │ Configuration   │  │ External      │
-              │ (JSON Files)    │  │ Services/APIs │
-              └─────────────────┘  └───────────────┘
+┌─────────────┐   stdio   ┌──────────────────────────────────────┐
+│  MCP Host   │◄─────────►│  Your server (moviemcpserver.sh)     │
+│ (AI System) │           │                                      │
+│             │   HTTP    │  ┌────────────────────────────────┐  │
+│             │◄─────────►│  │ Transport                      │  │
+└─────────────┘           │  │  run_mcp_server (stdio)        │  │
+                          │  │  mcpserver_http.sh (--http)    │  │
+                          │  └───────────────┬────────────────┘  │
+                          │                  ▼                   │
+                          │  ┌────────────────────────────────┐  │
+                          │  │ Protocol  mcpserver_core.sh    │  │
+                          │  │   process_request()            │  │
+                          │  └───────────────┬────────────────┘  │
+                          │                  ▼                   │
+                          │  ┌────────────────────────────────┐  │
+                          │  │ Business logic  tool_* funcs   │  │
+                          │  └───────────────┬────────────────┘  │
+                          └──────────────────┼──────────────────-┘
+                                             ▼
+                              ┌──────────────────────────────┐
+                              │ Config JSON · external APIs  │
+                              └──────────────────────────────┘
 ```
 
-- **mcpserver_core.sh**: Handles JSON-RPC and MCP protocol
-- **moviemcpserver.sh**: Contains business logic functions
-- **assets/**: JSON configuration files
+Both transports call the **same** `process_request`, so they cannot drift in protocol behaviour.
+
+- **mcpserver_core.sh**: JSON-RPC framing, MCP dispatch, version negotiation, result envelopes
+- **mcpserver_http.sh**: the Streamable HTTP binding — headers, status codes, `Origin`, listener
+- **moviemcpserver.sh** / **examples/gitserver.sh**: business logic — your `tool_*` functions
+- **assets/**: discovery document and tool list
+- **spec/**: the vendored official schema the conformance test validates against
+- **examples/**: [four runnable servers and a build-your-own walkthrough](examples/README.md)
+- **docs/adr/**: why the SDK is shaped this way · **docs/spikes/**: the experiments behind those decisions
 
 ---
 
@@ -79,13 +126,11 @@ echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_movies"
 
 ### Tool Function Guidelines
 
-When implementing tool functions for the MCP server, follow these guidelines:
-
-1. **Naming Convention**: All tool functions must be prefixed with `tool_` followed by the same name defined in tools_list.json
-2. **Parameters**: Each function should accept a single parameter `$1` containing JSON arguments
-3. **Success Pattern**: For successful operations, echo the result and return 0
-4. **Error Pattern**: For validation errors, echo an error message and return 1
-5. **Automatic Discovery**: All tool functions are automatically exposed to the MCP server based on tools_list.json
+1. **Naming Convention**: prefix every tool function with `tool_`, matching the name in your tools JSON
+2. **Parameters**: each function takes a single parameter `$1` containing the arguments as JSON
+3. **Success**: echo the result, `return 0`
+4. **Failure**: echo an explanatory message, `return 1` — the caller receives a **successful** response with `isError: true`, so the model can read the reason and retry. Tool failures are not transport errors.
+5. **Automatic Discovery**: tools are dispatched by function name; the tools JSON controls what clients are *told* exists
 
 ### Implementation Steps
 
@@ -100,43 +145,42 @@ MCP_CONFIG_FILE="$(dirname "${BASH_SOURCE[0]}")/assets/weatherserver_config.json
 MCP_TOOLS_LIST_FILE="$(dirname "${BASH_SOURCE[0]}")/assets/weatherserver_tools.json"
 MCP_LOG_FILE="$(dirname "${BASH_SOURCE[0]}")/logs/weatherserver.log"
 
-# MCP Server Tool Function Guidelines:
-# 1. Name all tool functions with prefix "tool_" followed by the same name defined in tools_list.json
-# 2. Function should accept a single parameter "$1" containing JSON arguments
-# 3. For successful operations: Echo the expected result and return 0
-# 4. For errors: Echo an error message and return 1
-# 5. All tool functions are automatically exposed to the MCP server based on tools_list.json
-
-# Source the core MCP server implementation
 source "$(dirname "${BASH_SOURCE[0]}")/mcpserver_core.sh"
 
-# Access environment variables
 API_KEY="${MCP_API_KEY:-default_key}"
 
 # Tool: Get current weather for a location
-# Parameters: Takes a JSON object with location
-# Success: Echo JSON result and return 0
-# Error: Echo error message and return 1
 tool_get_weather() {
   local args="$1"
   local location=$(echo "$args" | jq -r '.location')
-  
-  # Parameter validation
-  if [[ -z "$location" ]]; then
-    echo "Missing required parameter: location"
+
+  if [[ -z "$location" || "$location" == "null" ]]; then
+    echo "Missing required parameter: location"   # reaches the model as isError
     return 1
   fi
-  
-  # Call external API
-  local weather=$(curl -s "https://api.example.com/weather?location=$location&apikey=$API_KEY")
-  echo "$weather"
+
+  curl -s "https://api.example.com/weather?location=$location&apikey=$API_KEY"
   return 0
 }
 
-
-# Start the MCP server
-run_mcp_server "$@"
+# stdio by default; --http serves the same tools over Streamable HTTP.
+case "${1:-}" in
+  --http)            shift; run_mcp_http_server "$@" ;;
+  handle-connection) run_mcp_http_server handle-connection ;;
+  *)                 run_mcp_server "$@" ;;
+esac
 ```
+
+For the `--http` mode also `source "$(dirname "${BASH_SOURCE[0]}")/mcpserver_http.sh"` next to the core.
+
+Four runnable examples are in **[examples/](examples/README.md)**, each covering a different problem:
+
+| Example | What it shows |
+| --- | --- |
+| [`gitserver.sh`](examples/gitserver.sh) | Shelling out safely — argument validation, structured output |
+| [`weatherserver.sh`](examples/weatherserver.sh) | Wrapping a third-party API — secrets in env, network failures, trimming the response |
+| [`fileserver.sh`](examples/fileserver.sh) | Saying no — read-only filesystem access with a real path-traversal boundary |
+| [`moviemcpserver.sh`](moviemcpserver.sh) | The minimum, over canned data |
 
 2. **Create `assets/weatherserver_tools.json`**
 
@@ -161,20 +205,24 @@ run_mcp_server "$@"
 }
 ```
 
-3. **Create `assets/weatherserver_config.json`**
+Keep the array order stable — the spec asks servers to return tools deterministically so clients (and LLM prompt caches) can cache them.
+
+3. **Create `assets/weatherserver_config.json`** — this is now the `server/discover` body, not an `initialize` result:
 
 ```json
 {
-  "protocolVersion": "2025-03-26",
+  "supportedVersions": ["2026-07-28"],
   "serverInfo": {
     "name": "WeatherServer",
     "version": "1.0.0"
   },
   "capabilities": {
     "tools": {
-      "listChanged": true
+      "listChanged": false
     }
   },
+  "ttlMs": 3600000,
+  "cacheScope": "public",
   "instructions": "This server provides weather information."
 }
 ```
@@ -187,9 +235,51 @@ chmod +x weatherserver.sh
 
 ---
 
-## 🖥️ Using with VS Code & GitHub Copilot
+## 🔀 Transports
 
-1. **Update VS Code settings.json**
+Both are the spec's standard bindings, and both run from the same server file.
+
+### stdio
+
+What an editor or agent launches as a subprocess. This is the default and the one to use
+unless you specifically need HTTP.
+
+```bash
+./moviemcpserver.sh
+```
+
+### Streamable HTTP
+
+`2026-07-28` removed sessions, the GET stream and SSE resumability, so this binding is now
+just *POST a message, get JSON back* — which is why it fits in a shell script at all.
+
+```bash
+./moviemcpserver.sh --http                    # http://127.0.0.1:3000/mcp
+MCP_HTTP_PORT=8080 ./moviemcpserver.sh --http
+```
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MCP_HTTP_PORT` | `3000` | listening port |
+| `MCP_HTTP_BIND` | `127.0.0.1` | interface — leave it on loopback |
+| `MCP_HTTP_PATH` | `/mcp` | endpoint path |
+| `MCP_ALLOWED_ORIGINS` | `http://localhost,http://127.0.0.1` | `Origin` allowlist; anything else gets `403` |
+
+Every POST **must** carry `MCP-Protocol-Version` and `Mcp-Method`, plus `Mcp-Name` for
+`tools/call` / `resources/read` / `prompts/get`, and each must match the request body —
+a mismatch is `400` with `-32020`. That is a security control, not ceremony: an
+intermediary may route on the header while the server executes the body.
+
+> ⚠️ **This is a local endpoint, not a web server.** It binds loopback, has no TLS and no
+> auth. Install `socat` (`brew install socat`) and it forks per connection; without it the
+> `netcat` fallback serves **one connection at a time**, with a brief window between
+> connections where the port is refused. To expose it beyond localhost, put a real reverse
+> proxy in front. See [ADR-0006](docs/adr/0006-add-streamable-http.md) and
+> [spike 02](docs/spikes/spike-02-http-listener.md).
+
+---
+
+## 🖥️ Using with an MCP client
 
 ```jsonc
 "mcp": {
@@ -206,20 +296,17 @@ chmod +x weatherserver.sh
 }
 ```
 
-2. **Use with GitHub Copilot Chat**
-
-```
-/mcp my-weather-server get weather for New York
-```
+⚠️ **The client must speak MCP `2026-07-28`.** This SDK implements that revision only and rejects older ones with `-32022` ([ADR-0002](docs/adr/0002-target-2026-07-28-only.md) explains the trade-off). Editors still on `2025-06-18` / `2025-11-25` will need a shim until they upgrade.
 
 ---
 
 ## 🚫 Limitations
 
-* No concurrency/parallel processing
-* Limited memory management
-* No streaming responses
-* Not designed for high throughput
+* **HTTP is a local endpoint**: no TLS, no auth, and without `socat` it serves one connection at a time
+* **No SSE response mode**, so no `notifications/progress` streaming and no `subscriptions/listen`
+* No concurrency on stdio: one client, one process, ~30 requests/second
+* No resources, prompts, MRTR input requests, or the tasks extension
+* Clients older than `2026-07-28` are rejected
 
 For AI assistants and local tool execution, these aren't blocking issues.
 

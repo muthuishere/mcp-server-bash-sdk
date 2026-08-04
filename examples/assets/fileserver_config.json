@@ -1,0 +1,15 @@
+{
+  "supportedVersions": ["2026-07-28"],
+  "serverInfo": {
+    "name": "FileServer",
+    "version": "1.0.0"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "ttlMs": 5000,
+  "cacheScope": "private",
+  "instructions": "Read-only access to one directory tree. Use list_files to see what is there, read_file to read a text file. Paths are relative to the served root; anything resolving outside it is refused, as are binary files and files over the size limit. Nothing here can modify the filesystem."
+}

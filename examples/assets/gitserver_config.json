@@ -1,0 +1,15 @@
+{
+  "supportedVersions": ["2026-07-28"],
+  "serverInfo": {
+    "name": "GitServer",
+    "version": "1.0.0"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "ttlMs": 5000,
+  "cacheScope": "private",
+  "instructions": "Read-only access to a git repository. Use git_status for the current working-tree state, git_log to survey recent history (filter by author or path), and git_show to inspect a single commit. Nothing here modifies the repository."
+}

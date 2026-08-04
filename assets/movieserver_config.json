@@ -1,13 +1,15 @@
 {
-  "protocolVersion": "2024-11-05",
+  "supportedVersions": ["2026-07-28"],
   "serverInfo": {
-    "name": "DemoServer",
-    "version": "0.1.0"
+    "name": "MovieServer",
+    "version": "0.3.0"
   },
   "capabilities": {
     "tools": {
-      "listChanged": true
+      "listChanged": false
     }
   },
-  "instructions": "This server provides movie information and ticket booking capabilities. You can list movies and book tickets."
+  "ttlMs": 3600000,
+  "cacheScope": "public",
+  "instructions": "This server provides movie information and ticket booking. Call get_movies to see what is playing, validate_age before booking a rated film, then book_ticket."
 }

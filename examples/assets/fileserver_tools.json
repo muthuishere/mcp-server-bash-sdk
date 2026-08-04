@@ -1,0 +1,32 @@
+{
+  "tools": [
+    {
+      "name": "list_files",
+      "description": "List the files and directories at a path within the served root.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Directory path relative to the served root. Defaults to the root itself.",
+            "default": "."
+          }
+        }
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Read the contents of a text file within the served root.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to the served root."
+          }
+        },
+        "required": ["path"]
+      }
+    }
+  ]
+}

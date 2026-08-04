@@ -1,0 +1,39 @@
+{
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Current weather conditions for a place: temperature, description, humidity and wind.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "A place name, e.g. 'Chennai' or 'Paris, France'."
+          }
+        },
+        "required": ["location"]
+      }
+    },
+    {
+      "name": "get_forecast",
+      "description": "Daily minimum and maximum temperatures for the next 1-3 days.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "A place name, e.g. 'Chennai' or 'Paris, France'."
+          },
+          "days": {
+            "type": "integer",
+            "description": "How many days to return (1-3).",
+            "minimum": 1,
+            "maximum": 3,
+            "default": 3
+          }
+        },
+        "required": ["location"]
+      }
+    }
+  ]
+}

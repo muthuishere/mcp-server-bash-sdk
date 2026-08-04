@@ -1,0 +1,15 @@
+{
+  "supportedVersions": ["2026-07-28"],
+  "serverInfo": {
+    "name": "WeatherServer",
+    "version": "1.0.0"
+  },
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "ttlMs": 600000,
+  "cacheScope": "public",
+  "instructions": "Current conditions and a short forecast for any place name. Use get_weather for what it is like right now, get_forecast for the next 1-3 days. Locations are place names such as 'Chennai' or 'Paris, France' - not coordinates."
+}

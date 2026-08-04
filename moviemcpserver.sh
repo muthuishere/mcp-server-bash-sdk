@@ -13,8 +13,10 @@ MCP_LOG_FILE="$(dirname "${BASH_SOURCE[0]}")/logs/movieserver.log"
 # 4. For errors: Echo an error message and return 1
 # 5. All tool functions are automatically exposed to the MCP server based on tools_list.json
 
-# Source the core MCP server implementation
+# Source the core MCP server implementation, plus the HTTP transport so this
+# server can run over either binding.
 source "$(dirname "${BASH_SOURCE[0]}")/mcpserver_core.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/mcpserver_http.sh"
 
 # Tool: Get movies currently playing
 # No parameters required
@@ -71,10 +73,21 @@ tool_book_ticket() {
         return 1
     fi
     
-    # Generate booking confirmation
-    local total_price=$(echo "$num_tickets * 12.99" | bc)
-    local booking_info="{\"bookingId\": \"BK$(date +%s)\", \"movieId\": $movie_id, \"showTime\": \"$show_time\", \"numTickets\": $num_tickets, \"totalPrice\": $total_price}"
-    echo "$booking_info"
+    # Generate booking confirmation. Arithmetic and JSON both go through jq:
+    # `bc` is absent on minimal Linux images, and hand-built JSON breaks the
+    # moment a value contains a quote.
+    jq -cn \
+        --argjson movieId "$movie_id" \
+        --arg showTime "$show_time" \
+        --argjson numTickets "$num_tickets" \
+        --arg bookingId "BK$(date +%s)" '
+        {
+          bookingId: $bookingId,
+          movieId: $movieId,
+          showTime: $showTime,
+          numTickets: $numTickets,
+          totalPrice: (($numTickets * 12.99) * 100 | round / 100)
+        }'
     return 0
 }
 
@@ -109,13 +122,15 @@ tool_validate_age() {
         return 1
     fi
     
-    # Age validation responses (normal responses, not errors)
+    # A failed age check is a real failure, and returning 1 now reaches the
+    # model as isError=true rather than as a transport error, so it can act on
+    # the reason instead of the user seeing a protocol fault (ADR-0005).
     if [[ "$movie_rating" == "A" && "$age" -lt 18 ]]; then
         echo "Must be at least 18 years old for A-rated movies"
-        return 0
+        return 1
     elif [[ "$movie_rating" == "PG-13" && "$age" -lt 13 ]]; then
         echo "Must be at least 13 years old for PG-13 movies"
-        return 0
+        return 1
     fi
     
     # If we get here, validation passed
@@ -123,5 +138,18 @@ tool_validate_age() {
     return 0
 }
 
-# Start the MCP server
-run_mcp_server "$@"
+# Start the MCP server.
+#   ./moviemcpserver.sh           -> stdio (what an editor launches)
+#   ./moviemcpserver.sh --http    -> Streamable HTTP on :3000
+case "${1:-}" in
+--http)
+    shift
+    run_mcp_http_server "$@"
+    ;;
+handle-connection)
+    run_mcp_http_server handle-connection
+    ;;
+*)
+    run_mcp_server "$@"
+    ;;
+esac
