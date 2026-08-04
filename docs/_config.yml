@@ -1,0 +1,17 @@
+title: MCP Server Bash SDK
+description: A Model Context Protocol server SDK in pure Bash, targeting the 2026-07-28 revision.
+theme: jekyll-theme-cayman
+show_downloads: false
+
+# Only the documentation is a website. The spikes are runnable shell scripts and
+# the vendored schema is 180 KB of machine-readable JSON -- neither is a page.
+exclude:
+  - "*.sh"
+  - Gemfile
+  - Gemfile.lock
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

@@ -1,7 +1,14 @@
 # 🐚 MCP Server in Bash
+
+[![MCP](https://img.shields.io/badge/MCP-2026--07--28-blue)](https://modelcontextprotocol.io/specification/2026-07-28)
+[![Release](https://img.shields.io/github/v/release/muthuishere/mcp-server-bash-sdk?color=success)](https://github.com/muthuishere/mcp-server-bash-sdk/releases)
+[![Platforms](https://img.shields.io/badge/tested-macOS%20%7C%20Debian%20%7C%20Alpine%20%7C%20Ubuntu-informational)](#supported-platforms)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![Discord](https://img.shields.io/badge/AgentNexus-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/V9C2kvHC8D)
 
 A lightweight, zero-overhead implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server in pure Bash — targeting the current **2026-07-28** revision.
+
+📖 **[Documentation site](https://muthuishere.github.io/mcp-server-bash-sdk/)** · 🧩 **[Examples](examples/)** · 🧠 **[Architecture decisions](docs/adr/)** · 🔬 **[Spikes](docs/spikes/)**
 
 **Why?** Most MCP servers are just API wrappers with schema conversion. This implementation provides a zero-overhead alternative to Node.js, Python, or other heavy runtimes.
 
@@ -309,6 +316,19 @@ intermediary may route on the header while the server executes the body.
 * Clients older than `2026-07-28` are rejected
 
 For AI assistants and local tool execution, these aren't blocking issues.
+
+---
+
+## 🧭 Design notes
+
+This SDK is documented as much by *why* as by *how*:
+
+- **[Architecture decisions](docs/adr/)** — seven ADRs, each recording what was rejected and
+  why. ADR-0001 chose stdio-only and is now superseded in scope by ADR-0006; the reversal is
+  recorded rather than edited away, because the protocol changed underneath it.
+- **[Spikes](docs/spikes/)** — runnable experiments behind every number here. They are how
+  the two platform bugs were found: `read -N` missing from macOS's bash 3.2, and Linux
+  capping a single `argv` entry at 128 KB where macOS does not.
 
 ---
 
