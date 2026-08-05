@@ -342,13 +342,3 @@ Blog : https://medium.com/@muthuishere/why-i-built-an-mcp-server-sdk-in-shell-ye
 
 Questions, ideas, or built something with this? Join **[AgentNexus](https://discord.gg/V9C2kvHC8D)** — a Discord
 for people building with AI agents and open tools. This project lives in **#mcp-bash-sdk**.
-
-## Who built this
-
-Made by [Muthukumaran Navaneethakrishnan](https://github.com/muthuishere).
-
-Most of my work is on the unglamorous side of running AI agents in production: what they cost,
-what they touch, and how to stop one doing something expensive while nobody is watching. If you
-have ever found out what an unattended agent spent from the invoice rather than from your own
-tooling, that is the problem I keep writing about — notes and post-mortems at
-[deemwar.com/insights](https://deemwar.com/insights).
