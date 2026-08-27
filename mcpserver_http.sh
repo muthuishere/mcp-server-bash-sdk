@@ -26,6 +26,9 @@ MCP_ALLOWED_ORIGINS="${MCP_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1}"
 
 http_write() { # http_write <status-line> <content-type> <body>
     local status="$1" ctype="$2" body="$3"
+    # HTTP Content-Length is defined in octets. Under a UTF-8 locale,
+    # ${#body} counts characters, so multibyte payloads under-report length.
+    local LC_ALL=C
     printf 'HTTP/1.1 %s\r\n' "$status"
     printf 'Content-Type: %s\r\n' "$ctype"
     printf 'Content-Length: %d\r\n' "${#body}"
