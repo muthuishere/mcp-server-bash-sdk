@@ -225,6 +225,29 @@ test_works_on_bash_3_2() {
     assert_jq '.result.tools | length > 0' 'true' "body framing works on bash 3.2"
 }
 
+# HTTP Content-Length is measured in octets, not characters. Under a UTF-8
+# locale Bash ${#var} counts characters, so this guards multibyte responses.
+test_utf8_content_length_is_bytes() {
+    local body out headers response declared actual
+    body='{"text":"hello — Привет 🚀"}'
+
+    out=$(BODY="$body" SCRIPT_DIR="$SCRIPT_DIR" /bin/bash -c '
+        source "$SCRIPT_DIR/mcpserver_http.sh"
+        http_json "200 OK" "$BODY"
+    ')
+
+    headers="${out%%$'\r\n\r\n'*}"
+    response="${out#*$'\r\n\r\n'}"
+    declared=$(printf '%s\n' "$headers" | tr -d '\r' | awk 'tolower($1)=="content-length:" {print $2}')
+    actual=$(printf '%s' "$response" | wc -c | tr -d '[:space:]')
+
+    [[ -n "$declared" ]] || fail "response omitted Content-Length" || return 1
+    [[ "$declared" = "$actual" ]] || fail "UTF-8 Content-Length was $declared but body was $actual bytes" || return 1
+    printf '%s' "$response" | jq -e . >/dev/null 2>&1 || fail "UTF-8 response body is not valid JSON" || return 1
+    [[ "$(printf '%s' "$response" | jq -r '.text')" == 'hello — Привет 🚀' ]] \
+        || fail "UTF-8 response body did not round-trip" || return 1
+}
+
 test_wrong_path_is_404() {
     http -X POST "http://127.0.0.1:$PORT/not-the-endpoint" -H "MCP-Protocol-Version: $PV" -H 'Mcp-Method: tools/list' \
         -d '{"jsonrpc":"2.0","id":13,"method":"tools/list","params":{'"$META"'}}'
@@ -250,6 +273,7 @@ ALL_TESTS=(
     test_bad_origin_is_403
     test_allowed_origin_passes
     test_legacy_session_headers_are_ignored
+    test_utf8_content_length_is_bytes
     test_wrong_path_is_404
     test_handle_connection_entry_point
     test_works_on_bash_3_2
