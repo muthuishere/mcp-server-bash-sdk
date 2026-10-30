@@ -42,6 +42,7 @@ The same call over HTTP — note the headers are **mandatory** and must match th
 ```bash
 curl -s -X POST http://127.0.0.1:3000/mcp \
   -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
   -H 'MCP-Protocol-Version: 2026-07-28' \
   -H 'Mcp-Method: tools/call' \
   -H 'Mcp-Name: git_log' \
